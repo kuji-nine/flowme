@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>収支Me - 入ったものと、出ていったもの (IN / OUT LOG)</title>
+<meta name="description" content="生まれてから食べてきた総量と、出ていったものの総量を計算します。CosMeシリーズ第6弾：あなたの体の収支表。">
+<style>
+  :root{
+    --bg:#0a0c06; --panel:rgba(24,28,14,.87); --line:rgba(190,220,120,.25);
+    --txt:#f4f8e8; --dim:#b6c294; --accent:#c4e57c; --accent2:#ffb37c; --out:#8fd0ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;min-height:100vh;overflow-x:hidden}
+  canvas#flow{position:fixed;inset:0;z-index:0}
+  .wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:28px 18px 64px}
+  header{text-align:center;padding:26px 0 8px}
+  .kicker{letter-spacing:.35em;font-size:11px;color:var(--accent)}
+  h1{font-size:30px;line-height:1.35;margin:10px 0 6px;font-weight:800}
+  h1 .en{display:block;font-size:13px;letter-spacing:.3em;color:var(--dim);font-weight:400;margin-top:6px}
+  .sub{color:var(--dim);font-size:14px;line-height:1.9}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:18px;backdrop-filter:blur(6px)}
+  .input-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
+  input{background:#12160a;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:16px}
+  label{font-size:12px;color:var(--dim);display:block;margin-bottom:4px;text-align:center}
+  button{background:linear-gradient(135deg,#7ba23f,#b5d94e);color:#16240a;border:none;border-radius:10px;padding:12px 22px;font-size:16px;font-weight:700;cursor:pointer}
+  button:active{transform:scale(.97)}
+  .big{text-align:center;padding:26px 10px}
+  .big .label{font-size:12px;letter-spacing:.25em;color:var(--dim)}
+  .big .num{font-size:46px;font-weight:800;color:var(--accent);margin:8px 0 2px;font-variant-numeric:tabular-nums}
+  .big .num small{font-size:20px}
+  .big .km{color:var(--dim);font-size:14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}.big .num{font-size:34px}}
+  .stat{text-align:center;padding:14px 8px}
+  .stat .v{font-size:23px;font-weight:800;color:var(--accent2);font-variant-numeric:tabular-nums}
+  .stat .v.blue{color:var(--out)}
+  .stat .k{font-size:11px;letter-spacing:.12em;color:var(--dim);margin-top:4px}
+  h2{font-size:17px;margin-bottom:4px}
+  h2 .en{font-size:11px;color:var(--dim);letter-spacing:.2em;font-weight:400}
+  .note{font-size:12px;color:var(--dim);line-height:1.8}
+  .poem{line-height:2.05;font-size:15px}
+  .poem b{color:var(--accent)}
+  .bar-wrap{margin-top:12px}
+  .bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin:8px 0 4px}
+  .bar{height:20px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;display:flex}
+  .bar .in{background:linear-gradient(90deg,#7ba23f,#c4e57c)}
+  .bar .poop{background:#c98d4e}
+  .bar .urine{background:#5aa7d6}
+  .bar .air{background:rgba(255,255,255,.35)}
+  footer{text-align:center;color:var(--dim);font-size:12px;margin-top:30px;line-height:1.9}
+  footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<canvas id="flow"></canvas>
+<div class="wrap">
+  <header>
+    <div class="kicker">★ IN / OUT LOG ★</div>
+    <h1>入ったものと、<br>出ていったもの<span class="en">収支Me — CosMe SERIES No.6</span></h1>
+    <p class="sub">食べてきたものには、必ず「出ていったもの」があります。<br>あなたの体を通過した物質の、人生分の収支表です。</p>
+  </header>
+
+  <div class="card">
+    <div class="input-row">
+      <div><label>生年月日</label><input type="date" id="birth" value="1975-07-14" min="1900-01-01"></div>
+      <div><label>　</label><button id="go">収支表を見る</button></div>
+    </div>
+    <p class="note" style="text-align:center;margin-top:10px">初期値はサンプルです（食事は1日3食で計算）</p>
+  </div>
+
+  <div class="card big">
+    <div class="label">食べてきた総量 / TOTAL FOOD IN</div>
+    <div class="num">約 <span id="food">–</span><small> トン</small></div>
+    <div class="km">食事の回数 約 <span id="meals">–</span> 回 ／ 米俵（60kg）なら 約 <span id="bales">–</span> 俵分</div>
+  </div>
+
+  <div class="grid">
+    <div class="card stat"><div class="v blue" id="poop">–</div><div class="k">出ていった うんち（固形）</div></div>
+    <div class="card stat"><div class="v blue" id="urine">–</div><div class="k">出ていった 尿（液体）</div></div>
+    <div class="card stat"><div class="v blue" id="banana">–</div><div class="k">うんちをバナナの重さに換算</div></div>
+    <div class="card stat"><div class="v blue" id="toilet">–</div><div class="k">トイレに座っていた時間の合計</div></div>
+  </div>
+
+  <div class="card">
+    <h2>収支バランス <span class="en">BALANCE</span></h2>
+    <p class="note">入った食事＋飲み物（約 <span id="inTotal">–</span> トン）の内訳は、どこへ行ったか。残りの大半は、汗と「息」で空へ帰りました。</p>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>うんち</span><span id="poopPct">–</span></div>
+      <div class="bar"><div class="poop" id="barPoop"></div></div>
+      <div class="bar-label"><span>尿</span><span id="urinePct">–</span></div>
+      <div class="bar"><div class="urine" id="barUrine"></div></div>
+      <div class="bar-label"><span>汗・呼気（水蒸気と二酸化炭素）ほか</span><span id="airPct">–</span></div>
+      <div class="bar"><div class="air" id="barAir"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>川としての、あなた <span class="en">NOTE</span></h2>
+    <p class="poem" id="poem"></p>
+  </div>
+
+  <div class="card">
+    <h2>仕組み <span class="en">HOW IT WORKS</span></h2>
+    <p class="note">
+      食事量は1日 約1.8kg（飲み物を除く食べ物の目安）、飲み物は1日 約1.5L、うんちは1日 約150g、尿は1日 約1.5L、
+      トイレ時間は1日 約5分として積算した概算です。うんちの「バナナ換算」は1本分の可食部 約100g との重さ比べです。
+      実際に痩せるとき体脂肪の多くが二酸化炭素として息で出ていくように、収支の最大の出口は「空気」です。
+      数字は個人差の大きい概算であり、「だいたいの物語」としてお楽しみください。
+    </p>
+  </div>
+
+  <footer>
+    収支Me — CosMeシリーズ ／ 姉妹サイト：<a href="https://kuji-nine.github.io/cosme/">CosMe — 宇宙の中の自分</a><br>
+    by Kuji:Nine
+  </footer>
+</div>
+
+<script>
+function calc(){
+  const v = document.getElementById("birth").value;
+  if(!v) return;
+  const birth = new Date(v + "T00:00:00");
+  const now = new Date();
+  const days = Math.floor((now - birth) / 86400000);
+  if(days <= 0) return;
+
+  const foodKg = days * 1.8;
+  const drinkL = days * 1.5;
+  const poopKg = days * 0.15;
+  const urineL = days * 1.5;
+  const inTotalKg = foodKg + drinkL; // drink ~1kg/L
+
+  document.getElementById("food").textContent = (foodKg / 1000).toFixed(1);
+  document.getElementById("meals").textContent = (days * 3).toLocaleString("ja-JP");
+  document.getElementById("bales").textContent = Math.round(foodKg / 60).toLocaleString("ja-JP");
+  document.getElementById("poop").textContent = "約 " + (poopKg / 1000).toFixed(2) + " トン";
+  document.getElementById("urine").textContent = "約 " + (urineL / 1000).toFixed(1) + " トン";
+  document.getElementById("banana").textContent = "約 " + Math.round(poopKg / 0.1).toLocaleString("ja-JP") + " 本分";
+  document.getElementById("toilet").textContent = "約 " + Math.round(days * 5 / 60 / 24).toLocaleString("ja-JP") + " 日間";
+  document.getElementById("inTotal").textContent = (inTotalKg / 1000).toFixed(1);
+
+  const pPoop = poopKg / inTotalKg * 100, pUrine = urineL / inTotalKg * 100;
+  const pAir = Math.max(0, 100 - pPoop - pUrine);
+  const setBar = (id, pct) => document.getElementById(id).style.width = pct.toFixed(1) + "%";
+  setBar("barPoop", pPoop); setBar("barUrine", pUrine); setBar("barAir", pAir);
+  document.getElementById("poopPct").textContent = "約 " + pPoop.toFixed(1) + " %";
+  document.getElementById("urinePct").textContent = "約 " + pUrine.toFixed(1) + " %";
+  document.getElementById("airPct").textContent = "約 " + pAir.toFixed(1) + " %";
+
+  document.getElementById("poem").innerHTML =
+    "入ったものは <b>約 " + (inTotalKg / 1000).toFixed(1) + " トン</b>。出ていった固形物は、そのうち僅か <b>約 " + (poopKg / 1000).toFixed(2) + " トン</b> です。" +
+    "残りのほとんどは水として流れ、息として空に帰りました。<br>" +
+    "つまり、あなたは食べ物の貯蔵庫ではありません。生まれた日から今日まで、" +
+    "<b>" + (inTotalKg / 1000).toFixed(1) + " トンの物質が通り過ぎていった「川」</b> です。<br>" +
+    "川は流れ続けることで、川であり続けます。皮膚が入れ替わり、血が世代交代し、食べ物が通過していく。" +
+    "止まらないことこそが、生きていることの形なのかもしれません。";
+}
+document.getElementById("go").addEventListener("click", calc);
+document.getElementById("birth").addEventListener("change", calc);
+calc();
+
+// slow drifting stream particles
+const cv = document.getElementById("flow"), cx = cv.getContext("2d");
+let W, H, pts = [];
+function resize(){
+  W = cv.width = innerWidth; H = cv.height = innerHeight;
+  pts = Array.from({length: 80}, () => ({x: Math.random()*W, y: Math.random()*H, r: Math.random()*2+0.5, s: Math.random()*0.6+0.2, drift: Math.random()*Math.PI*2}));
+}
+function tick(t){
+  cx.clearRect(0, 0, W, H);
+  for(const p of pts){
+    p.x += p.s; p.y += Math.sin(t/2600 + p.drift) * 0.3;
+    if(p.x > W + 4){ p.x = -4; p.y = Math.random()*H; }
+    cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 7);
+    cx.fillStyle = "rgba(196,229,124,0.28)"; cx.fill();
+  }
+  requestAnimationFrame(tick);
+}
+addEventListener("resize", resize); resize(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>
